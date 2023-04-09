@@ -58,34 +58,40 @@ const handleApply = async () => {
     }
 }
 
-// 迴圈處理所有圖片
-const handleModifyPDF = () => {
-
+const handleModifyPDF = async () => {
+    
+    globalStore.setIsLoading(true)
+    
+    const url = globalStore.pdfUrl
+    
+    // 加載PDF
+    const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer())
+    const pdfDoc = await PDFDocument.load(existingPdfBytes)
+    
+    // 迴圈處理所有圖片
     for (let i = 0; i < imageStore.images.length; i++) {
-        handleAddImage(imageStore.images[i])
+        await handleAddImage(imageStore.images[i], pdfDoc)
     }
     imageStore.images = []
+    
+    // 將PDF轉成二進制或base64
+    const pdfBytes = await pdfDoc.saveAsBase64({ dataUri: true })
+    globalStore.pdfUrl = pdfBytes
+    
+    globalStore.setIsLoading(false)
 }
 
 // 將圖片加入PDF
-const handleAddImage = async (imgageInfo) => {
-
-    globalStore.setIsLoading(true)
-
-    const url = globalStore.pdfUrl
-    const img = imgageInfo.url
-
-    // 加載PDF
-  	const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer())
-    const pdfDoc = await PDFDocument.load(existingPdfBytes)
+const handleAddImage = async (imgageInfo, pdfDoc) => {
 
     // 取得PDF頁數
     const pages = pdfDoc.getPages()
     const page = pages[imgageInfo.page - 1]
 
+    const img = imgageInfo.url
+
     // 加載圖片
-    const pngUrl = img
-    const pngImageBytes = await fetch(pngUrl).then((res) => res.arrayBuffer())
+    const pngImageBytes = await fetch(img).then((res) => res.arrayBuffer())
     
     // 加入圖片
     const pngImage = await pdfDoc.embedPng(pngImageBytes)
@@ -108,13 +114,6 @@ const handleAddImage = async (imgageInfo) => {
         width:  imgageInfo.w * scale,
         height:  imgageInfo.h * scale
     })
-
-    // 將PDF轉成二進制或base64
-    // const pdfBytes = await pdfDoc.save()
-    const pdfBytes = await pdfDoc.saveAsBase64({ dataUri: true })
-    globalStore.pdfUrl = pdfBytes
-
-    globalStore.setIsLoading(false)
 }
 
 const handleUpload = () => {
@@ -171,26 +170,32 @@ const handleDownload = () => {
                 <ImageEditBox :index="index" />
             </div>
         </div>
-        <div class="signature-container">
-            <Vue3Signature 
-                ref="signatureRef"
-                style="width: 500px; aspect-ratio: 21/9;"
-                :sigOption="signatureState.option"
-                :disabled="signatureState.disabled" class="signaturel"
-            />
+    </div>
+    <div class="signature-container">
+        <Vue3Signature 
+            ref="signatureRef"
+            style="width: 500px; aspect-ratio: 21/9;"
+            :sigOption="signatureState.option"
+            :disabled="signatureState.disabled" class="signaturel"
+        />
+    </div>
+    <div class="img-list">
+        <div class="img-box" v-for="(item, index) in imageStore.images" :key="index">
+            <img :src="item.url" alt="">
+            <div style="display: flex; flex-direction: column;">
+                <p>page: {{ item.page }}</p>
+                <p>width: {{ item.w }}</p>
+                <p>height: {{ item.h }}</p>
+                <p>x: {{ item.x }}</p>
+                <p>y: {{ item.y }}</p>
+            </div>
         </div>
-        <div>
-            <div class="signature" style="margin: 5px; border: 1px solid yellow;">
-                <button @click="handleApply()">套用簽名</button>
-                <button @click="handleModifyPDF()">加入簽名</button>
-            </div>
-            <div class="uploadImg" style="margin: 5px; border: 1px solid green;">
-                <button  @click="handleUpload()">上傳圖片</button>
-            </div>
-            <div class="pdf" style="margin: 5px; border: 1px solid blue;">
-                <button  @click="handleDownload()">下載PDF</button>
-            </div>
-        </div>
+    </div>
+    <div>
+        <button @click="handleApply()">套用簽名</button>
+        <button @click="handleModifyPDF()">加入簽名</button>
+        <button  @click="handleUpload()">上傳圖片</button>
+        <button  @click="handleDownload()">下載PDF</button>
     </div>
 </div>
 </template>
@@ -226,6 +231,24 @@ const handleDownload = () => {
     img {
         display: block;
         width: 100%;
+    }
+}
+.img-list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    .img-box {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        width: 400px;
+        margin: 5px 0;
+        img {
+            width: 50%;
+        }
+        p {
+            margin: 0;
+        }
     }
 }
 button {

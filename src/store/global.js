@@ -4,7 +4,8 @@ export const useGlobalStore = defineStore('global', {
 
 	state: () => ({
 		isLoading: false,
-		pdfUrl: null
+		// pdfUrl: null
+		pdfUrl: '/test.pdf'
 	}),
 	getters: {
 		// userCount (state) {

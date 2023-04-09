@@ -10,7 +10,8 @@ const selected = ref(false)
 
 <template>
 <div id="home">
-    <component :is="selected ? Editor : Select" @select="selected = true" />
+    <!-- <component :is="selected ? Editor : Select" @select="selected = true" /> -->
+    <component :is="Editor" />
 </div>
 </template>
 
