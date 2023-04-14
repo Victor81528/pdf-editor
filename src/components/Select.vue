@@ -2,7 +2,6 @@
 import { useGlobalStore } from '../store/global'
 
 const store = useGlobalStore()
-const emit = defineEmits(['select'])
 
 const handleUpload = () => {
     
@@ -14,13 +13,30 @@ const handleUpload = () => {
 
         const file = fileInput.files[0]
         store.pdfUrl = URL.createObjectURL(file)
-		emit('select')
+		store.comp = 'Editor'
     }
     fileInput.click()
 }
 
 const handleUploadMutiple = () => {
-    alert('哈哈！我還沒寫好啦～');
+
+    const fileInput = document.createElement('input')
+	fileInput.type = 'file'
+	fileInput.accept = '.pdf'
+	fileInput.multiple = true
+	fileInput.onchange = () => {
+		const files = fileInput.files
+		const urls = []
+		console.log(files);
+		for (let i = 0; i < files.length; i++) {
+			const file = files[i]
+			const url = URL.createObjectURL(file)
+			urls.push({name: file.name, url: url})
+		}
+		store.pdfUrl = urls
+		store.comp = 'EditorMultiple'
+	}
+	fileInput.click()
 }
 
 </script>

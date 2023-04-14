@@ -1,119 +1,37 @@
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, computed } from 'vue';
 import VuePdfEmbed from 'vue-pdf-embed'
 import { PDFDocument } from 'pdf-lib'
-import Vue3Signature from "vue3-signature"
 
 import { useGlobalStore } from '../store/global.js'
 import { useImageStore } from '../store/image.js'
 
 import ImageEditBox from './ImageEditBox.vue'
+import SignaturePad from './SignaturePad.vue';
 
-import { base64ToBlob } from '../utils.js'
+import { blobToBase64 } from '../utils.js'
 
 const globalStore = useGlobalStore()
 const imageStore = useImageStore()
 
 const pdfRef = ref(null)
 const pdfPage = ref(1)
+const isPadOpen = ref(false)
+const test = ref(0)
 
-const handleChangePdfPage = (n) => {
-
-    pdfPage.value += n
-}
-
-// vue-signature
-const signatureRef = ref(null)
-const signatureState = reactive({
-    count: 0,
-    option: {
-        penColor: "rgb(0, 0, 0)",
-        backgroundColor: "rgba(255,255,255, 0)"
-    },
-    disabled: false
+const isImages = computed(() => {
+    return imageStore.images.length === 0
 })
-const handleApply = async () => {
 
-    const file = signatureRef.value.save('image/png')
+const handleChangePage = (n) => {
 
-    const blobImg = base64ToBlob(file)
+    n = parseInt(n)
+    if (n > pdfRef.value.pageCount) n = pdfRef.value.pageCount
+    else if (n < 1) n = 1
 
-    const image = new Image()
-    image.src = URL.createObjectURL(blobImg)
-    image.onload = () => {
-        const width = image.width
-        const height = image.height
-        console.log(`圖片寬度：${width}，圖片高度：${height}`)
-        
-        imageStore.images.push({
-            url: URL.createObjectURL(blobImg),
-            page: pdfPage.value,
-            x: 0,
-            y: 0,
-            w: 300,
-            h: 300 / width * height
-        })
+    pdfPage.value = n
 
-        signatureRef.value.clear()
-    }
-}
-
-const handleModifyPDF = async () => {
-    
-    globalStore.setIsLoading(true)
-    
-    const url = globalStore.pdfUrl
-    
-    // 加載PDF
-    const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer())
-    const pdfDoc = await PDFDocument.load(existingPdfBytes)
-    
-    // 迴圈處理所有圖片
-    for (let i = 0; i < imageStore.images.length; i++) {
-        await handleAddImage(imageStore.images[i], pdfDoc)
-    }
-    imageStore.images = []
-    
-    // 將PDF轉成二進制或base64
-    const pdfBytes = await pdfDoc.saveAsBase64({ dataUri: true })
-    globalStore.pdfUrl = pdfBytes
-    
-    globalStore.setIsLoading(false)
-}
-
-// 將圖片加入PDF
-const handleAddImage = async (imgageInfo, pdfDoc) => {
-
-    // 取得PDF頁數
-    const pages = pdfDoc.getPages()
-    const page = pages[imgageInfo.page - 1]
-
-    const img = imgageInfo.url
-
-    // 加載圖片
-    const pngImageBytes = await fetch(img).then((res) => res.arrayBuffer())
-    
-    // 加入圖片
-    const pngImage = await pdfDoc.embedPng(pngImageBytes)
-    // const pngDims = pngImage.scale(imgInfo.scale)
-
-    const canvasStyle = document.getElementsByTagName('canvas')[0].style
-
-    const canvasWidth = canvasStyle.width.slice(0, -2)
-    parseFloat(canvasWidth)
-
-    const canvasHeight = canvasStyle.height.slice(0, -2)
-    parseFloat(canvasHeight)
-
-    const scale = page.getWidth() / canvasWidth
-
-    // 圖片放置在PDF上的位置
-    page.drawImage(pngImage, {
-        x: imgageInfo.x * scale,
-        y: (canvasHeight - imgageInfo.y - imgageInfo.h) * scale,
-        width:  imgageInfo.w * scale,
-        height:  imgageInfo.h * scale
-    })
+    test.value += 1
 }
 
 const handleUpload = () => {
@@ -142,16 +60,130 @@ const handleUpload = () => {
         }
         
     }
-
+    
     fileInput.click()
 }
 
-const handleDownload = () => {
+// 將圖片加入PDF
+const handleAddImage = async (imgageInfo, pdfDoc) => {
+
+    // 取得PDF頁數
+    const pages = pdfDoc.getPages()
+    const page = pages[imgageInfo.page - 1]
+
+    const img = imgageInfo.url
+
+    // 加載圖片
+    const pngImageBytes = await fetch(img).then((res) => res.arrayBuffer())
+
+    // 加入圖片
+    const pngImage = await pdfDoc.embedPng(pngImageBytes)
+
+    const canvasStyle = document.getElementsByTagName('canvas')[0].style
+
+    const canvasWidth = canvasStyle.width.slice(0, -2)
+    parseFloat(canvasWidth)
+
+    const canvasHeight = canvasStyle.height.slice(0, -2)
+    parseFloat(canvasHeight)
+
+    const scale = page.getWidth() / canvasWidth
+
+
+
+    // 取得pdf的原始寬度
+    console.log(page.getWidth());
+    // 取得pdf的原始寬度
+
+
+
+    // 圖片放置在PDF上的位置
+    page.drawImage(pngImage, {
+        // x: imgageInfo.x * scale,
+        x: imgageInfo.x / canvasWidth * page.getWidth(),
+        y: (canvasHeight - imgageInfo.y - imgageInfo.h) * scale,
+        width:  imgageInfo.w * scale,
+        height:  imgageInfo.h * scale
+    })
+}
+
+const handleModifyPDF = async () => {
+    
+    globalStore.setIsLoading(true)
+    
+    const url = globalStore.pdfUrl
+    
+    // 加載PDF
+    const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer())
+    const pdfDoc = await PDFDocument.load(existingPdfBytes)
+    
+    // 迴圈處理所有圖片
+    for (let i = 0; i < imageStore.images.length; i++) {
+        await handleAddImage(imageStore.images[i], pdfDoc)
+    }
+    imageStore.images = []
+    
+    // 將PDF轉成二進制或base64
+    const pdfBytes = await pdfDoc.saveAsBase64({ dataUri: true })
+    globalStore.pdfUrl = pdfBytes
+    
+    globalStore.setIsLoading(false)
+}
+
+const handleDownloadPDF = async () => {
+
+    await handleModifyPDF()
 
     const link = document.createElement('a')
     link.href = globalStore.pdfUrl
     link.download = 'signed.pdf'
     link.click()
+}
+
+const handleExport = async () => {
+
+    let data = imageStore.images
+    data = JSON.parse(JSON.stringify(data))
+    
+    for (let i = 0; i < data.length; i++) {
+        data[i].url = await blobToBase64(data[i].url)
+    }
+
+    const jsonData = JSON.stringify(data)
+    const blob = new Blob([jsonData], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'data.json'
+    link.click()
+}
+
+const handleImport = async () => {
+
+    const fileInput = document.createElement('input')
+
+    fileInput.type = 'file'
+    fileInput.accept = '.json'
+    fileInput.onchange = () => {
+
+        const file = fileInput.files[0]
+        const reader = new FileReader()
+
+        reader.onload = () => {
+
+            const jsonStr = reader.result
+            const jsonObj = JSON.parse(jsonStr)
+            
+            const res = jsonObj.some( (i) => i.page > pdfRef.value.pageCount)
+
+            if (res === true) alert('PDF不適用此設定檔，請檢查頁數等資訊')
+            else Object.assign(imageStore.images, jsonObj)
+        }
+
+        reader.readAsText(file)
+    }
+    fileInput.click()
+
 }
 
 </script>
@@ -160,25 +192,22 @@ const handleDownload = () => {
 <div id="editor">
     <div class="pdf-outer" v-if="globalStore.pdfUrl">
         <div class="pdf-nav">
-            <button :disabled="pdfPage === 1" @click="handleChangePdfPage(-1)">-</button>
-            <button v-if="pdfRef" :disabled="pdfPage === pdfRef.pageCount" @click="handleChangePdfPage(1)">+</button>
-            <p v-if="pdfRef">{{ pdfPage }} / {{ pdfRef.pageCount }}</p>
+            <button :disabled="pdfPage === 1" @click="handleChangePage(pdfPage - 1)">-</button>
+            <button v-if="pdfRef" :disabled="pdfPage === pdfRef.pageCount" @click="handleChangePage(pdfPage + 1)">+</button>
+            <input v-if="pdfRef" type="number" min="1" :max="pdfRef.pageCount"
+            :value="pdfPage" :key="test"
+            @keydown.enter="handleChangePage($event.target.value)"
+            >
+            <p v-if="pdfRef"> / {{ pdfRef.pageCount }}</p>
         </div>
         <div class="pdf-content">
             <vue-pdf-embed ref="pdfRef" :source="globalStore.pdfUrl" :page="pdfPage" />
             <div v-for="(item, index) in imageStore.images" :key="index">
-                <ImageEditBox :index="index" />
+                <ImageEditBox v-if="item.page === pdfPage" :index="index" />
             </div>
         </div>
     </div>
-    <div class="signature-container">
-        <Vue3Signature 
-            ref="signatureRef"
-            style="width: 500px; aspect-ratio: 21/9;"
-            :sigOption="signatureState.option"
-            :disabled="signatureState.disabled" class="signaturel"
-        />
-    </div>
+    <SignaturePad v-if="isPadOpen" :pdfPage="pdfPage" @handleClosePad="isPadOpen = false" />
     <div class="img-list">
         <div class="img-box" v-for="(item, index) in imageStore.images" :key="index">
             <img :src="item.url" alt="">
@@ -192,10 +221,11 @@ const handleDownload = () => {
         </div>
     </div>
     <div>
-        <button @click="handleApply()">套用簽名</button>
-        <button @click="handleModifyPDF()">加入簽名</button>
-        <button  @click="handleUpload()">上傳圖片</button>
-        <button  @click="handleDownload()">下載PDF</button>
+        <button @click="isPadOpen = true">簽名</button>
+        <button @click="handleUpload()">上傳圖片</button>
+        <button :disabled="isImages" @click="handleDownloadPDF()">下載PDF</button>
+        <button :disabled="isImages" @click="handleExport()">匯出設定</button>
+        <button @click="handleImport()">匯入設定</button>
     </div>
 </div>
 </template>
@@ -216,10 +246,18 @@ const handleDownload = () => {
             flex-direction: row;
             width: 100%;
             align-items: center;
+            input {
+                display: block;
+                width: 30px;
+                height: 25px;
+                margin-right: 5px;
+                font-size: 16px;
+            }
         }
         .pdf-content {
             position: relative;
-            width: 80%;
+            width: 100%;
+            max-width: 768px;
             overflow: hidden;
         }
     }
@@ -253,5 +291,15 @@ const handleDownload = () => {
 }
 button {
     margin: 15px;
+}
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+/* Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
 }
 </style>

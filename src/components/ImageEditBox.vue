@@ -1,5 +1,4 @@
 <script setup>
-import { ref } from 'vue';
 import { useImageStore } from '../store/image.js'
 
 import Vue3DraggableResizable from 'vue3-draggable-resizable'
@@ -16,9 +15,9 @@ const handleRemove = () => {
 	imageStore.images.pop(props.index)
 }
 
-
 </script>
-
+既然x與store的x是綁定的無法做計算
+那再新加入scale或是經過還原的x座標或是距離邊界的百分比
 <template>
 	<div id="image">
 		<Vue3DraggableResizable
@@ -70,8 +69,8 @@ const handleRemove = () => {
 	position: absolute;
 	width: 18px;
 	height: 18px;
-	top: 7%;
-	right: 3%;
+	top: -9px;
+	right: 5%;
 	justify-content: center;
 	align-items: center;
 	background-color: rgb(185, 185, 185);

@@ -3,9 +3,9 @@ import { defineStore } from 'pinia'
 export const useGlobalStore = defineStore('global', {
 
 	state: () => ({
+		comp: 'Select',
 		isLoading: false,
-		// pdfUrl: null
-		pdfUrl: '/test.pdf'
+		pdfUrl: null
 	}),
 	getters: {
 		// userCount (state) {
