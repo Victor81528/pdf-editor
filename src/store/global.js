@@ -5,7 +5,7 @@ export const useGlobalStore = defineStore('global', {
 	state: () => ({
 		comp: 'Select',
 		isLoading: false,
-		pdfUrl: null
+		pdfs: []
 	}),
 	getters: {
 		// userCount (state) {

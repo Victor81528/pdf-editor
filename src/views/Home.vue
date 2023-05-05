@@ -1,6 +1,4 @@
 <script setup>
-import { ref, shallowRef } from 'vue'
-
 import Select from '../components/Select.vue'
 import Editor from '../components/Editor.vue'
 import EditorMultiple from '../components/EditorMultiple.vue'

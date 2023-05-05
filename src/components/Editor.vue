@@ -19,6 +19,17 @@ const pdfPage = ref(1)
 const isPadOpen = ref(false)
 const test = ref(0)
 
+const canvasWidth = () => {
+    const canvasStyle = document.getElementsByTagName('canvas')[0].style
+    const canvasWidth = canvasStyle.width.slice(0, -2)
+    return parseFloat(canvasWidth)
+}
+const canvasHeight = () => {
+    const canvasStyle = document.getElementsByTagName('canvas')[0].style
+    const canvasHeight = canvasStyle.height.slice(0, -2)
+    return parseFloat(canvasHeight)
+}
+
 const isImages = computed(() => {
     return imageStore.images.length === 0
 })
@@ -34,7 +45,7 @@ const handleChangePage = (n) => {
     test.value += 1
 }
 
-const handleUpload = () => {
+const handleUploadImage = () => {
     
     const fileInput = document.createElement('input')
 
@@ -58,9 +69,8 @@ const handleUpload = () => {
                 h: 300 / width * height
             })
         }
-        
     }
-    
+
     fileInput.click()
 }
 
@@ -79,29 +89,12 @@ const handleAddImage = async (imgageInfo, pdfDoc) => {
     // 加入圖片
     const pngImage = await pdfDoc.embedPng(pngImageBytes)
 
-    const canvasStyle = document.getElementsByTagName('canvas')[0].style
-
-    const canvasWidth = canvasStyle.width.slice(0, -2)
-    parseFloat(canvasWidth)
-
-    const canvasHeight = canvasStyle.height.slice(0, -2)
-    parseFloat(canvasHeight)
-
-    const scale = page.getWidth() / canvasWidth
-
-
-
-    // 取得pdf的原始寬度
-    console.log(page.getWidth());
-    // 取得pdf的原始寬度
-
-
+    const scale = page.getWidth() / canvasWidth()
 
     // 圖片放置在PDF上的位置
     page.drawImage(pngImage, {
-        // x: imgageInfo.x * scale,
-        x: imgageInfo.x / canvasWidth * page.getWidth(),
-        y: (canvasHeight - imgageInfo.y - imgageInfo.h) * scale,
+        x: imgageInfo.x * scale,
+        y: (canvasHeight() - imgageInfo.y - imgageInfo.h) * scale,
         width:  imgageInfo.w * scale,
         height:  imgageInfo.h * scale
     })
@@ -111,7 +104,7 @@ const handleModifyPDF = async () => {
     
     globalStore.setIsLoading(true)
     
-    const url = globalStore.pdfUrl
+    const url = globalStore.pdfs[0].url
     
     // 加載PDF
     const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer())
@@ -121,11 +114,11 @@ const handleModifyPDF = async () => {
     for (let i = 0; i < imageStore.images.length; i++) {
         await handleAddImage(imageStore.images[i], pdfDoc)
     }
-    imageStore.images = []
-    
+    // imageStore.images = []
+
     // 將PDF轉成二進制或base64
     const pdfBytes = await pdfDoc.saveAsBase64({ dataUri: true })
-    globalStore.pdfUrl = pdfBytes
+    globalStore.pdfs[0].url = pdfBytes
     
     globalStore.setIsLoading(false)
 }
@@ -135,18 +128,23 @@ const handleDownloadPDF = async () => {
     await handleModifyPDF()
 
     const link = document.createElement('a')
-    link.href = globalStore.pdfUrl
-    link.download = 'signed.pdf'
+    link.href = globalStore.pdfs[0].url
+    link.download = `${globalStore.pdfs[0].name}_signed.pdf`
     link.click()
 }
 
 const handleExport = async () => {
 
     let data = imageStore.images
+    
     data = JSON.parse(JSON.stringify(data))
     
     for (let i = 0; i < data.length; i++) {
         data[i].url = await blobToBase64(data[i].url)
+        data[i].x_percents = data[i].x / canvasWidth()
+        data[i].y_percents = data[i].y / canvasHeight()
+        data[i].w_percents = data[i].w / canvasWidth()
+        data[i].h_percents = data[i].h / canvasHeight()
     }
 
     const jsonData = JSON.stringify(data)
@@ -158,7 +156,7 @@ const handleExport = async () => {
     link.click()
 }
 
-const handleImport = async () => {
+const handleImport = () => {
 
     const fileInput = document.createElement('input')
 
@@ -173,11 +171,21 @@ const handleImport = async () => {
 
             const jsonStr = reader.result
             const jsonObj = JSON.parse(jsonStr)
-            
+
             const res = jsonObj.some( (i) => i.page > pdfRef.value.pageCount)
 
             if (res === true) alert('PDF不適用此設定檔，請檢查頁數等資訊')
-            else Object.assign(imageStore.images, jsonObj)
+            else {
+
+                Object.assign(imageStore.images, jsonObj)
+
+                for (let i = 0; i < imageStore.images.length; i++) {
+                    imageStore.images[i].x = canvasWidth() * imageStore.images[i].x_percents
+                    imageStore.images[i].y = canvasHeight() * imageStore.images[i].y_percents
+                    imageStore.images[i].w = canvasWidth() * imageStore.images[i].w_percents
+                    imageStore.images[i].h = canvasHeight() * imageStore.images[i].h_percents
+                }
+            }
         }
 
         reader.readAsText(file)
@@ -190,7 +198,7 @@ const handleImport = async () => {
 
 <template>
 <div id="editor">
-    <div class="pdf-outer" v-if="globalStore.pdfUrl">
+    <div class="pdf-outer" v-if="globalStore.pdfs[0].url">
         <div class="pdf-nav">
             <button :disabled="pdfPage === 1" @click="handleChangePage(pdfPage - 1)">-</button>
             <button v-if="pdfRef" :disabled="pdfPage === pdfRef.pageCount" @click="handleChangePage(pdfPage + 1)">+</button>
@@ -201,7 +209,7 @@ const handleImport = async () => {
             <p v-if="pdfRef"> / {{ pdfRef.pageCount }}</p>
         </div>
         <div class="pdf-content">
-            <vue-pdf-embed ref="pdfRef" :source="globalStore.pdfUrl" :page="pdfPage" />
+            <vue-pdf-embed ref="pdfRef" :source="globalStore.pdfs[0].url" :page="pdfPage" />
             <div v-for="(item, index) in imageStore.images" :key="index">
                 <ImageEditBox v-if="item.page === pdfPage" :index="index" />
             </div>
@@ -222,7 +230,7 @@ const handleImport = async () => {
     </div>
     <div>
         <button @click="isPadOpen = true">簽名</button>
-        <button @click="handleUpload()">上傳圖片</button>
+        <button @click="handleUploadImage()">上傳圖片</button>
         <button :disabled="isImages" @click="handleDownloadPDF()">下載PDF</button>
         <button :disabled="isImages" @click="handleExport()">匯出設定</button>
         <button @click="handleImport()">匯入設定</button>

@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue'
 import { useImageStore } from '../store/image.js'
 
 import Vue3DraggableResizable from 'vue3-draggable-resizable'
@@ -9,6 +10,7 @@ const imageStore = useImageStore()
 
 const printfn = () => {
 	console.log('asdadsa')
+	// imageStore.images[props.index].x_percents = imageStore.images[props.index].x / canvasWidth
 }
 
 const handleRemove = () => {
@@ -16,8 +18,7 @@ const handleRemove = () => {
 }
 
 </script>
-既然x與store的x是綁定的無法做計算
-那再新加入scale或是經過還原的x座標或是距離邊界的百分比
+
 <template>
 	<div id="image">
 		<Vue3DraggableResizable
@@ -57,6 +58,8 @@ const handleRemove = () => {
 	&:hover {
 		.i-box {
 			display: flex;
+			justify-content: center;
+			align-items: center;
 		}
 	}
 	img {
@@ -71,8 +74,6 @@ const handleRemove = () => {
 	height: 18px;
 	top: -9px;
 	right: 5%;
-	justify-content: center;
-	align-items: center;
 	background-color: rgb(185, 185, 185);
 	border-radius: 3px;
 	cursor: pointer;

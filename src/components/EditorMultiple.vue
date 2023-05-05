@@ -85,10 +85,10 @@ const handleDownloadPDF = async () => {
     
     globalStore.setIsLoading(true)
 
-    for (let i = 0; i < globalStore.pdfUrl.length; i++) {
+    for (let i = 0; i < globalStore.pdfs.length; i++) {
         
-        const url = await handleModifyPDF(globalStore.pdfUrl[i].url)
-        globalStore.pdfUrl[i].url = url
+        const url = await handleModifyPDF(globalStore.pdfs[i].url)
+        globalStore.pdfs[i].url = url
     }
 
     imageStore.images = []
@@ -98,7 +98,7 @@ const handleDownloadPDF = async () => {
     // link.download = 'signed.pdf'
     // link.click()
 
-    const files = globalStore.pdfUrl.map( i => i.url)
+    const files = globalStore.pdfs.map( i => i.url)
 
     // 建立 Blob 物件
     const blob = new Blob(files, { type: 'application/zip' });
@@ -124,7 +124,7 @@ const handleDownloadPDF = async () => {
 
 <template>
 <div id="editor-mutiple">
-    <div v-for="(item, index) in globalStore.pdfUrl" :key="index">
+    <div v-for="(item, index) in globalStore.pdfs" :key="index">
         {{ item.name }}
     </div>
     <div class="img-list">

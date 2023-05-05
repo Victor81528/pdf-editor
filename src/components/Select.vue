@@ -1,4 +1,5 @@
 <script setup>
+import { PDFDocument } from 'pdf-lib'
 import { useGlobalStore } from '../store/global'
 
 const store = useGlobalStore()
@@ -9,10 +10,23 @@ const handleUpload = () => {
 
     fileInput.type = 'file'
     fileInput.accept = '.pdf'
-    fileInput.onchange = () => {
+    fileInput.onchange = async () => {
 
         const file = fileInput.files[0]
-        store.pdfUrl = URL.createObjectURL(file)
+		const url = URL.createObjectURL(file)
+
+		// 載入PDF
+		const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer())
+    	const pdfDoc = await PDFDocument.load(existingPdfBytes)
+		const pages = pdfDoc.getPages()
+    	const page = pages[0]
+
+		store.pdfs.push({
+			name: file.name,
+			url: url,
+			width: page.getWidth(),
+			height: page.getHeight()
+		})
 		store.comp = 'Editor'
     }
     fileInput.click()
@@ -24,16 +38,28 @@ const handleUploadMutiple = () => {
 	fileInput.type = 'file'
 	fileInput.accept = '.pdf'
 	fileInput.multiple = true
-	fileInput.onchange = () => {
+	fileInput.onchange = async () => {
 		const files = fileInput.files
 		const urls = []
-		console.log(files);
+		
 		for (let i = 0; i < files.length; i++) {
 			const file = files[i]
 			const url = URL.createObjectURL(file)
-			urls.push({name: file.name, url: url})
+
+			// 載入PDF
+			const existingPdfBytes = await fetch(url).then(res => res.arrayBuffer())
+			const pdfDoc = await PDFDocument.load(existingPdfBytes)
+			const pages = pdfDoc.getPages()
+			const page = pages[0]
+
+			urls.push({
+				name: file.name,
+				url: url,
+				width: page.getWidth(),
+				height: page.getHeight()
+			})
 		}
-		store.pdfUrl = urls
+		store.pdfs = urls
 		store.comp = 'EditorMultiple'
 	}
 	fileInput.click()
