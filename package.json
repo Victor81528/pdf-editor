@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "jszip": "^3.10.1",
     "pdf-lib": "^1.17.1",
     "pinia": "^2.0.33",
     "sass": "^1.58.3",

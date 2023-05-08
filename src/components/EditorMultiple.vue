@@ -1,5 +1,6 @@
 <script setup>
 import { PDFDocument } from 'pdf-lib'
+import JSZip from 'jszip'
 
 import { useGlobalStore } from '../store/global.js'
 import { useImageStore } from '../store/image.js';
@@ -46,22 +47,22 @@ const handleAddImage = async (imgageInfo, pdfDoc) => {
     // 加入圖片
     const pngImage = await pdfDoc.embedPng(pngImageBytes)
 
-    const canvasStyle = document.getElementsByTagName('canvas')[0].style
+    // const canvasStyle = document.getElementsByTagName('canvas')[0].style
 
-    const canvasWidth = canvasStyle.width.slice(0, -2)
-    parseFloat(canvasWidth)
+    // const canvasWidth = canvasStyle.width.slice(0, -2)
+    // parseFloat(canvasWidth)
 
-    const canvasHeight = canvasStyle.height.slice(0, -2)
-    parseFloat(canvasHeight)
+    // const canvasHeight = canvasStyle.height.slice(0, -2)
+    // parseFloat(canvasHeight)
 
-    const scale = page.getWidth() / canvasWidth
+    // const scale = page.getWidth() / canvasWidth
 
     // 圖片放置在PDF上的位置
     page.drawImage(pngImage, {
-        x: imgageInfo.x * scale,
-        y: (canvasHeight - imgageInfo.y - imgageInfo.h) * scale,
-        width:  imgageInfo.w * scale,
-        height:  imgageInfo.h * scale
+        x: imgageInfo.x_percents * page.getWidth(),
+        y: (1 - imgageInfo.y_percents - imgageInfo.h_percents) * page.getHeight(),
+        width:  imgageInfo.w_percents * page.getWidth(),
+        height:  imgageInfo.h_percents * page.getHeight(),
     })
 }
 
@@ -97,27 +98,42 @@ const handleDownloadPDF = async () => {
     // link.href = globalStore.pdfUrl
     // link.download = 'signed.pdf'
     // link.click()
+/////////////////////////////////
+    const zip = new JSZip()
+    // const folder = zip.folder('files')
+    for (let i = 0; i < globalStore.pdfs.length; i++) {
+        const pdf = globalStore.pdfs[i]
+        const pdfData = await fetch(pdf.url).then((res) => res.blob());
+        zip.file(pdf.name, pdfData)
+    }
+    zip.generateAsync({ type: 'blob' }).then((content) => {
+        const downloadLink = document.createElement('a')
+        downloadLink.href = URL.createObjectURL(content)
+        downloadLink.download = 'files.zip'
+        downloadLink.click()
+    })
+/////////////////////////////////
 
-    const files = globalStore.pdfs.map( i => i.url)
+    // const files = globalStore.pdfs.map( i => i.url)
 
-    // 建立 Blob 物件
-    const blob = new Blob(files, { type: 'application/zip' });
+    // // 建立 Blob 物件
+    // const blob = new Blob(files, { type: 'application/zip' })
 
-    // 取得 Blob URL
-    const blobUrl = URL.createObjectURL(blob);
+    // // 取得 Blob URL
+    // const blobUrl = URL.createObjectURL(blob)
 
-    // 建立虛擬的下載連結
-    const downloadLink = document.createElement('a');
-    downloadLink.href = blobUrl;
-    downloadLink.download = 'files.zip';
+    // // 建立虛擬的下載連結
+    // const downloadLink = document.createElement('a')
+    // downloadLink.href = blobUrl
+    // downloadLink.download = 'files.zip'
 
-    // 觸發點擊事件下載檔案
-    downloadLink.click();
+    // // 觸發點擊事件下載檔案
+    // downloadLink.click()
 
-    // 釋放 Blob URL 資源
-    URL.revokeObjectURL(blobUrl);
+    // // 釋放 Blob URL 資源
+    // URL.revokeObjectURL(blobUrl)
 
-    globalStore.setIsLoading(false)
+    // globalStore.setIsLoading(false)
 }
 
 </script>
