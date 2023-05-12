@@ -1,12 +1,128 @@
 <script setup>
+import { ref, onMounted } from 'vue'
 import { PDFDocument } from 'pdf-lib'
 import JSZip from 'jszip'
+import VuePdfEmbed from 'vue-pdf-embed'
+import Swiper, { Navigation, FreeMode } from 'swiper'
+import 'swiper/swiper-bundle.min.css'
 
 import { useGlobalStore } from '../store/global.js'
 import { useImageStore } from '../store/image.js';
 
 const globalStore = useGlobalStore()
 const imageStore = useImageStore()
+
+let swiper = null
+const swiperEle = ref(null)
+const prevButton = ref(null)
+const nextButton = ref(null)
+const prevDisallowed = ref(true)
+const nextDisallowed = ref(false)
+const pdfPage = ref(1)
+
+let imgSwiper = null
+const imgSwiperEle = ref(null)
+const imgPrevButton = ref(null)
+const imgNextButton = ref(null)
+const imgPrevDisallowed = ref(true)
+const imgNextDisallowed = ref(false)
+
+onMounted(() => {
+    swiper = new Swiper(swiperEle.value, {
+        modules: [Navigation, FreeMode],
+        navigation: {
+            prevEl: prevButton.value,
+            nextEl: nextButton.value
+        },
+        slidesPerView: 'auto',
+        spaceBetween: 20,
+        speed: 500,
+        allowTouchMove: true,
+        freeMode: true,
+        breakpoints: {
+            576: {
+                slidesPerView: 3
+            },
+            768: {
+                slidesPerView: 4,
+                spaceBetween: 20,
+                allowTouchMove: false,
+                freeMode: true
+            },
+            1200: {
+                slidesPerView: 5,
+                spaceBetween: 20,
+                allowTouchMove: false,
+                freeMode: true
+            },
+            1400: {
+                slidesPerView: 5,
+                spaceBetween: 18,
+                allowTouchMove: false,
+                freeMode: true
+            }
+        },
+        on: {
+            reachBeginning: () => {
+                prevDisallowed.value = true
+            },
+            fromEdge: () => {
+                prevDisallowed.value = false
+                nextDisallowed.value = false
+            },
+            reachEnd: () => {
+                nextDisallowed.value = true
+            }
+        }
+    }),
+    imgSwiper = new Swiper(imgSwiperEle.value, {
+        modules: [Navigation, FreeMode],
+        navigation: {
+            prevEl: imgPrevButton.value,
+            nextEl: imgNextButton.value
+        },
+        slidesPerView: 'auto',
+        spaceBetween: 20,
+        speed: 500,
+        allowTouchMove: true,
+        freeMode: true,
+        breakpoints: {
+            576: {
+                slidesPerView: 3
+            },
+            768: {
+                slidesPerView: 4,
+                spaceBetween: 20,
+                allowTouchMove: false,
+                freeMode: true
+            },
+            1200: {
+                slidesPerView: 5,
+                spaceBetween: 20,
+                allowTouchMove: false,
+                freeMode: true
+            },
+            1400: {
+                slidesPerView: 5,
+                spaceBetween: 18,
+                allowTouchMove: false,
+                freeMode: true
+            }
+        },
+        on: {
+            reachBeginning: () => {
+                imgPrevDisallowed.value = true
+            },
+            fromEdge: () => {
+                imgPrevDisallowed.value = false
+                imgNextDisallowed.value = false
+            },
+            reachEnd: () => {
+                imgNextDisallowed.value = true
+            }
+        }
+    })
+})
 
 const handleImport = async () => {
 
@@ -47,16 +163,6 @@ const handleAddImage = async (imgageInfo, pdfDoc) => {
     // 加入圖片
     const pngImage = await pdfDoc.embedPng(pngImageBytes)
 
-    // const canvasStyle = document.getElementsByTagName('canvas')[0].style
-
-    // const canvasWidth = canvasStyle.width.slice(0, -2)
-    // parseFloat(canvasWidth)
-
-    // const canvasHeight = canvasStyle.height.slice(0, -2)
-    // parseFloat(canvasHeight)
-
-    // const scale = page.getWidth() / canvasWidth
-
     // 圖片放置在PDF上的位置
     page.drawImage(pngImage, {
         x: imgageInfo.x_percents * page.getWidth(),
@@ -93,90 +199,120 @@ const handleDownloadPDF = async () => {
     }
 
     imageStore.images = []
-    
-    // const link = document.createElement('a')
-    // link.href = globalStore.pdfUrl
-    // link.download = 'signed.pdf'
-    // link.click()
-/////////////////////////////////
+
     const zip = new JSZip()
-    // const folder = zip.folder('files')
+
     for (let i = 0; i < globalStore.pdfs.length; i++) {
         const pdf = globalStore.pdfs[i]
         const pdfData = await fetch(pdf.url).then((res) => res.blob());
         zip.file(pdf.name, pdfData)
     }
-    zip.generateAsync({ type: 'blob' }).then((content) => {
+
+    try {
+        const content = await zip.generateAsync({ type: 'blob' })
         const downloadLink = document.createElement('a')
         downloadLink.href = URL.createObjectURL(content)
         downloadLink.download = 'files.zip'
         downloadLink.click()
-    })
-/////////////////////////////////
-
-    // const files = globalStore.pdfs.map( i => i.url)
-
-    // // 建立 Blob 物件
-    // const blob = new Blob(files, { type: 'application/zip' })
-
-    // // 取得 Blob URL
-    // const blobUrl = URL.createObjectURL(blob)
-
-    // // 建立虛擬的下載連結
-    // const downloadLink = document.createElement('a')
-    // downloadLink.href = blobUrl
-    // downloadLink.download = 'files.zip'
-
-    // // 觸發點擊事件下載檔案
-    // downloadLink.click()
-
-    // // 釋放 Blob URL 資源
-    // URL.revokeObjectURL(blobUrl)
-
-    // globalStore.setIsLoading(false)
+    } catch (err) {
+        alert(err)
+    }
+    globalStore.setIsLoading(false)
 }
 
 </script>
 
 <template>
 <div id="editor-mutiple">
-    <div v-for="(item, index) in globalStore.pdfs" :key="index">
-        {{ item.name }}
-    </div>
-    <div class="img-list">
-        <div class="img-box" v-for="(item, index) in imageStore.images" :key="index">
-            <img :src="item.url" alt="">
-            <div style="display: flex; flex-direction: column;">
-                <p>page: {{ item.page }}</p>
-                <p>width: {{ item.w }}</p>
-                <p>height: {{ item.h }}</p>
-                <p>x: {{ item.x }}</p>
-                <p>y: {{ item.y }}</p>
+    <div id="pdf-list" class="swiper" ref="swiperEle">
+        <div class="swiper-wrapper">
+            <div class="swiper-slide" v-for="(item, index) in globalStore.pdfs" :key="index">
+                <div class="pdf-card">
+                    <vue-pdf-embed :source="item.url" :page="pdfPage" height="250" />
+                    {{ item.name }}
+                </div>
             </div>
         </div>
+        <div class="swiper-button-prev" ref="prevButton"></div>
+        <div class="swiper-button-next" ref="nextButton"></div>
     </div>
-    <button @click="handleImport()">選擇設定檔</button>
-    <button @click="handleDownloadPDF()">下載PDF</button>
+    <div id="img-list" class="swiper" ref="imgSwiperEle">
+        <div class="swiper-wrapper">
+            <div class="swiper-slide" v-for="(item, index) in imageStore.images" :key="index">
+                <div class="img-box">
+                    <img :src="item.url" alt="">
+                    <div style="display: flex; flex-direction: column;">
+                        <p>page: {{ item.page }}</p>
+                        <p>width: {{ item.w }}</p>
+                        <p>height: {{ item.h }}</p>
+                        <p>x: {{ item.x }}</p>
+                        <p>y: {{ item.y }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="swiper-button-prev" ref="imgPrevButton"></div>
+        <div class="swiper-button-next" ref="imgNextButton"></div>
+    </div>
+
+    <div class="btns">
+        <button @click="handleImport()">選擇設定檔</button>
+        <button @click="handleDownloadPDF()">下載PDF</button>
+    </div>
 </div>
 </template>
 
 <style lang="scss" scoped>
-.img-list {
+#editor-mutiple {
     display: flex;
     flex-direction: column;
+    width: 100%;
+    justify-content: center;
     align-items: center;
-    .img-box {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        width: 400px;
-        margin: 5px 0;
-        img {
-            width: 50%;
+    padding: 20px 0;
+    .swiper {
+        width: 100%;
+        overflow: visible;
+        .swiper-slide {
+            width: 60%;
+            .pdf-card {
+                display: flex;
+                height: 100%;
+                flex-direction: column;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .img-box {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                margin: 5px 0;
+                img {
+                    width: 50%;
+                    margin: 10px;
+                }
+                p {
+                    margin: 0;
+                }
+            }
         }
-        p {
-            margin: 0;
-        }
+    }
+}
+#pdf-list {
+    margin: 15px 0;
+}
+#img-list {
+    margin: 15px 0;
+}
+.btns {
+    display: flex;
+    width: 100%;
+    max-width: 768px;
+    justify-content: center;
+    margin: 15px 0;
+    padding: 0 5px;
+    button {
+        margin: 0 7.5px;
     }
 }
 </style>

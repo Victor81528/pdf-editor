@@ -1,7 +1,9 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import VuePdfEmbed from 'vue-pdf-embed'
 import { PDFDocument } from 'pdf-lib'
+import Swiper, { Navigation, FreeMode } from 'swiper'
+import 'swiper/swiper-bundle.min.css'
 
 import { useGlobalStore } from '../store/global.js'
 import { useImageStore } from '../store/image.js'
@@ -9,7 +11,7 @@ import { useImageStore } from '../store/image.js'
 import ImageEditBox from './ImageEditBox.vue'
 import SignaturePad from './SignaturePad.vue';
 
-import { blobToBase64 } from '../utils.js'
+import { blobToBase64, imgToPng } from '../utils.js'
 
 const globalStore = useGlobalStore()
 const imageStore = useImageStore()
@@ -18,6 +20,63 @@ const pdfRef = ref(null)
 const pdfPage = ref(1)
 const isPadOpen = ref(false)
 const test = ref(0)
+
+let imgSwiper = null
+const imgSwiperEle = ref(null)
+const imgPrevButton = ref(null)
+const imgNextButton = ref(null)
+const imgPrevDisallowed = ref(true)
+const imgNextDisallowed = ref(false)
+
+onMounted(() => {
+    imgSwiper = new Swiper(imgSwiperEle.value, {
+        modules: [Navigation, FreeMode],
+        navigation: {
+            prevEl: imgPrevButton.value,
+            nextEl: imgNextButton.value
+        },
+        slidesPerView: 'auto',
+        spaceBetween: 20,
+        speed: 500,
+        allowTouchMove: true,
+        freeMode: true,
+        breakpoints: {
+            576: {
+                slidesPerView: 2
+            },
+            768: {
+                slidesPerView: 3,
+                spaceBetween: 20,
+                allowTouchMove: false,
+                freeMode: true
+            },
+            1200: {
+                slidesPerView: 3,
+                spaceBetween: 20,
+                allowTouchMove: false,
+                freeMode: true
+            },
+            1400: {
+                slidesPerView: 3,
+                spaceBetween: 18,
+                allowTouchMove: false,
+                freeMode: true
+            }
+        },
+        on: {
+            reachBeginning: () => {
+                imgPrevDisallowed.value = true
+            },
+            fromEdge: () => {
+                imgPrevDisallowed.value = false
+                imgNextDisallowed.value = false
+            },
+            reachEnd: () => {
+                imgNextDisallowed.value = true
+            }
+        }
+    })
+})
 
 const canvasWidth = () => {
     const canvasStyle = document.getElementsByTagName('canvas')[0].style
@@ -54,21 +113,73 @@ const handleUploadImage = () => {
     fileInput.onchange = () => {
         const file = fileInput.files[0]
 
-        const image = new Image()
-        image.src = URL.createObjectURL(file)
-        image.onload = () => {
-            const width = image.width
-            const height = image.height
-    
-            imageStore.images.push({
-                url: URL.createObjectURL(file),
-                page: pdfPage.value,
-                x: 0,
-                y: 0,
-                w: 300,
-                h: 300 / width * height
-            })
+        const img = new Image();
+        if (file.type !== 'image/png') {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const context = canvas.getContext('2d');
+                    context.drawImage(img, 0, 0);
+                    canvas.toBlob((blob) => {
+                        const newFile = new File([blob], `${file.name}.png`, {type: 'image/png'});
+                        const image = new Image();
+                        image.src = URL.createObjectURL(newFile);
+                        image.onload = () => {
+                            const width = image.width;
+                            const height = image.height;
+                            imageStore.images.push({
+                                url: image.src,
+                                page: pdfPage.value,
+                                x: 0,
+                                y: 0,
+                                w: 300,
+                                h: 300 / width * height
+                            });
+                        }
+                    }, 'image/png');
+                }
+                img.src = event.target.result;
+            }
+            reader.readAsDataURL(file);
+        } else {
+            img.src = URL.createObjectURL(file);
+            img.onload = () => {
+
+                const width = img.width;
+                const height = img.height;
+        
+                imageStore.images.push({
+                    url: img.src,
+                    page: pdfPage.value,
+                    x: 0,
+                    y: 0,
+                    w: 300,
+                    h: 300 / width * height
+                });
+            }
         }
+
+        // const image = new Image()
+        // image.src = URL.createObjectURL(file)
+        // image.onload = () => {
+
+        //     const aaa = imgToPng(image)
+
+        //     const width = aaa.width
+        //     const height = aaa.height
+    
+        //     imageStore.images.push({
+        //         url: image.src,
+        //         page: pdfPage.value,
+        //         x: 0,
+        //         y: 0,
+        //         w: 300,
+        //         h: 300 / width * height
+        //     })
+        // }
     }
 
     fileInput.click()
@@ -131,6 +242,8 @@ const handleDownloadPDF = async () => {
     link.href = globalStore.pdfs[0].url
     link.download = `${globalStore.pdfs[0].name}_signed.pdf`
     link.click()
+
+    location.reload() 
 }
 
 const handleExport = async () => {
@@ -200,13 +313,17 @@ const handleImport = () => {
 <div id="editor">
     <div class="pdf-outer" v-if="globalStore.pdfs[0].url">
         <div class="pdf-nav">
-            <button :disabled="pdfPage === 1" @click="handleChangePage(pdfPage - 1)">-</button>
-            <button v-if="pdfRef" :disabled="pdfPage === pdfRef.pageCount" @click="handleChangePage(pdfPage + 1)">+</button>
-            <input v-if="pdfRef" type="number" min="1" :max="pdfRef.pageCount"
-            :value="pdfPage" :key="test"
-            @keydown.enter="handleChangePage($event.target.value)"
-            >
-            <p v-if="pdfRef"> / {{ pdfRef.pageCount }}</p>
+            <div class="page-btn">
+                <button :disabled="pdfPage === 1" @click="handleChangePage(pdfPage - 1)">-</button>
+                <button v-if="pdfRef" :disabled="pdfPage === pdfRef.pageCount" @click="handleChangePage(pdfPage + 1)">+</button>
+            </div>
+            <div class="page-input">
+                <input v-if="pdfRef" type="number" min="1" :max="pdfRef.pageCount"
+                :value="pdfPage" :key="test"
+                @keydown.enter="handleChangePage($event.target.value)"
+                >
+                <p v-if="pdfRef"> / {{ pdfRef.pageCount }}</p>
+            </div>
         </div>
         <div class="pdf-content">
             <vue-pdf-embed ref="pdfRef" :source="globalStore.pdfs[0].url" :page="pdfPage" />
@@ -214,21 +331,27 @@ const handleImport = () => {
                 <ImageEditBox v-if="item.page === pdfPage" :index="index" />
             </div>
         </div>
-    </div>
-    <SignaturePad v-if="isPadOpen" :pdfPage="pdfPage" @handleClosePad="isPadOpen = false" />
-    <div class="img-list">
-        <div class="img-box" v-for="(item, index) in imageStore.images" :key="index">
-            <img :src="item.url" alt="">
-            <div style="display: flex; flex-direction: column;">
-                <p>page: {{ item.page }}</p>
-                <p>width: {{ item.w }}</p>
-                <p>height: {{ item.h }}</p>
-                <p>x: {{ item.x }}</p>
-                <p>y: {{ item.y }}</p>
+        <div id="img-list" class="swiper" ref="imgSwiperEle">
+            <div class="swiper-wrapper">
+                <div class="swiper-slide" v-for="(item, index) in imageStore.images" :key="index">
+                    <div class="img-box">
+                        <img :src="item.url" alt="">
+                        <div style="display: flex; flex-direction: column;">
+                            <p>page: {{ item.page }}</p>
+                            <p>width: {{ item.w }}</p>
+                            <p>height: {{ item.h }}</p>
+                            <p>x: {{ item.x }}</p>
+                            <p>y: {{ item.y }}</p>
+                        </div>
+                    </div>
+                </div>
             </div>
+            <div class="swiper-button-prev" ref="imgPrevButton"></div>
+            <div class="swiper-button-next" ref="imgNextButton"></div>
         </div>
     </div>
-    <div>
+    <SignaturePad v-if="isPadOpen" :pdfPage="pdfPage" @handleClosePad="isPadOpen = false" />
+    <div class="btns">
         <button @click="isPadOpen = true">簽名</button>
         <button @click="handleUploadImage()">上傳圖片</button>
         <button :disabled="isImages" @click="handleDownloadPDF()">下載PDF</button>
@@ -244,6 +367,7 @@ const handleImport = () => {
     flex-direction: column;
     align-items: center;
     width: 100%;
+    padding: 20px 0;
     .pdf-outer {
         display: flex;
         flex-direction: column;
@@ -253,13 +377,29 @@ const handleImport = () => {
             display: flex;
             flex-direction: row;
             width: 100%;
+            max-width: 768px;
+            justify-content: space-between;
             align-items: center;
-            input {
-                display: block;
-                width: 30px;
-                height: 25px;
-                margin-right: 5px;
-                font-size: 16px;
+            margin: 15px 0;
+            .page-btn {
+                button {
+                    margin: 0;
+                    margin-right: 15px;
+                }
+            }
+            .page-input {
+                display: flex;
+                align-items: center;
+                input {
+                    display: block;
+                    width: 30px;
+                    height: 25px;
+                    margin-right: 5px;
+                    font-size: 16px;
+                }
+                p {
+                    margin: 0;
+                }
             }
         }
         .pdf-content {
@@ -279,26 +419,41 @@ const handleImport = () => {
         width: 100%;
     }
 }
-.img-list {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    .img-box {
+#img-list {
+    max-width: 1080px;
+    margin: 15px 0;
+}
+.swiper {
+    width: 100%;
+    overflow: hidden;
+    .swiper-wrapper {
         display: flex;
-        flex-direction: row;
         align-items: center;
-        width: 400px;
-        margin: 5px 0;
-        img {
-            width: 50%;
-        }
-        p {
-            margin: 0;
+        .swiper-slide {
+            width: 60%;
+            .img-box {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                margin: 5px 0;
+                img {
+                    width: 50%;
+                    margin: 10px;
+                }
+                p {
+                    margin: 0;
+                }
+            }
         }
     }
 }
-button {
-    margin: 15px;
+.btns {
+    display: flex;
+    width: 100%;
+    max-width: 768px;
+    justify-content: space-between;
+    margin: 15px 0;
+    padding: 0 5px;
 }
 /* Chrome, Safari, Edge, Opera */
 input::-webkit-outer-spin-button,

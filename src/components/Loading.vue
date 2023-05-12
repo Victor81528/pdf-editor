@@ -31,6 +31,7 @@ onUnmounted(() => {
 	align-items: center;
 	background-color: rgba(0, 0, 0, 0.7);
 	backdrop-filter: blur(6px);
+  z-index: 50;
 	img {
 		width: 100px;
 	}

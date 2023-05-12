@@ -8,11 +8,6 @@ import 'vue3-draggable-resizable/dist/Vue3DraggableResizable.css'
 const props = defineProps(['index'])
 const imageStore = useImageStore()
 
-const printfn = () => {
-	console.log('asdadsa')
-	// imageStore.images[props.index].x_percents = imageStore.images[props.index].x / canvasWidth
-}
-
 const handleRemove = () => {
 	imageStore.images.pop(props.index)
 }
@@ -22,8 +17,8 @@ const handleRemove = () => {
 <template>
 	<div id="image">
 		<Vue3DraggableResizable
-			:initW="imageStore.images[props.index].w"
-			:initH="imageStore.images[props.index].h"
+			:initW="imageStore.images[props.index].w + 2"
+			:initH="imageStore.images[props.index].h + 2"
 			v-model:x="imageStore.images[props.index].x"
 			v-model:y="imageStore.images[props.index].y"
 			v-model:w="imageStore.images[props.index].w"
@@ -31,14 +26,6 @@ const handleRemove = () => {
 			:draggable="true"
 			:resizable="true"
 			:lockAspectRatio="true"
-			@activated="printfn()"
-			@deactivated="printfn()"
-			@drag-start="printfn()"
-			@resize-start="printfn()"
-			@dragging="printfn()"
-			@resizing="printfn()"
-			@drag-end="printfn()"
-			@resize-end="printfn()"
 		>
 			<img :src="imageStore.images[props.index].url" alt="">
 			<div class="i-box">
@@ -55,6 +42,7 @@ const handleRemove = () => {
 	align-items: center;
 }
 .vdr-container {
+	box-sizing: border-box;
 	&:hover {
 		.i-box {
 			display: flex;
