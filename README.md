@@ -1,7 +1,17 @@
-# Vue 3 + Vite
+# PDF簡易編輯器（業務用）
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+[點我點我](https://victor81528.github.io/pdf-editor/)
 
-## Recommended IDE Setup
+使用：
+- Vue3 Composition API
+- Pinia
+- Vue-Router
+- Git
 
-- [VS Code](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
+應同事許願要求，功能開發圍繞在新增圖片以及批次處理，簽名那個只是附帶...\
+
+可以將圖片本身及位置存成.json檔案方便多位同事使用\
+
+主要 breakpoint 為 ： 以主流桌機為主
+面向 device： 桌機
+開發用瀏覽器： Edge 113 for macOS
