@@ -12,6 +12,6 @@
 
 可以將圖片本身及位置存成.json檔案方便多位同事使用\
 
-主要 breakpoint 為 ： 以主流桌機為主
-面向 device： 桌機
-開發用瀏覽器： Edge 113 for macOS
+主要 breakpoint 為 ： 以主流桌機為主\
+面向 device： 桌機\
+開發用瀏覽器： Edge 113 for macOS\
