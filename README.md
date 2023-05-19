@@ -2,7 +2,6 @@
 
 [點我點我](https://victor81528.github.io/pdf-editor/)
 
-使用：
 - Vue3 Composition API
 - Pinia
 - Vue-Router
