@@ -11,7 +11,7 @@ import { useImageStore } from '../store/image.js'
 import ImageEditBox from './ImageEditBox.vue'
 import SignaturePad from './SignaturePad.vue';
 
-import { blobToBase64, imgToPng } from '../utils.js'
+import { blobToBase64 } from '../utils.js'
 
 const globalStore = useGlobalStore()
 const imageStore = useImageStore()
@@ -161,25 +161,6 @@ const handleUploadImage = () => {
                 });
             }
         }
-
-        // const image = new Image()
-        // image.src = URL.createObjectURL(file)
-        // image.onload = () => {
-
-        //     const aaa = imgToPng(image)
-
-        //     const width = aaa.width
-        //     const height = aaa.height
-    
-        //     imageStore.images.push({
-        //         url: image.src,
-        //         page: pdfPage.value,
-        //         x: 0,
-        //         y: 0,
-        //         w: 300,
-        //         h: 300 / width * height
-        //     })
-        // }
     }
 
     fileInput.click()

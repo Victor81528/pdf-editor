@@ -27,22 +27,3 @@ export const blobToBase64 = async (objectUrl) => {
         }
     })
 }
-
-export const imgToPng = async (image) => {
-
-    // 建立 Canvas 元素
-    const canvas = document.createElement('canvas')
-
-    // 設定 Canvas 的大小與圖片大小相同
-    canvas.width = image.width
-    canvas.height = image.height
-
-    // 繪製圖片到 Canvas 上
-    const context = canvas.getContext('2d')
-    context.drawImage(image, 0, 0)
-
-    // 將 Canvas 轉換為 PNG 圖片
-    const pngDataUrl = canvas.toDataURL('image/png')
-從這邊開始de
-    return pngDataUrl
-}
